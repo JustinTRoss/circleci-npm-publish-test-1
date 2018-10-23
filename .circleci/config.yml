@@ -1,0 +1,156 @@
+# Javascript Node CircleCI 2.0 configuration file
+#
+# Check https://circleci.com/docs/2.0/language-javascript/ for more details
+# Check https://learnxinyminutes.com/docs/yaml/ for a YAML refresher
+#
+
+# Define CircleCI version to use
+version: 2
+
+# Define YAML anchor with common code
+defaults: &defaults
+    working_directory: ~/repo
+    docker:
+      # Specify docker image version.
+      - image: circleci/node:10.11.0
+
+jobs:
+  bootstrap:
+    # Extend with defaults anchor defined at top of file.
+    <<: *defaults
+
+    steps:
+      # Check out source code to the configured working directory.
+      - checkout
+      # Restore dependencies to working directory from previously saved key.
+      - restore_cache:
+          key: v1-dependencies-{{ .Branch }}-{{ checksum "package.json" }}
+      # Install dependencies from package-lock.json.
+      - run:
+          name: Install Dependencies
+          command: npm ci
+      # Save dependencies (node_modules) to cache.
+      - save_cache:
+          key: v1-dependencies-{{ .Branch }}-{{ checksum "package.json" }}
+          paths:
+            - node_modules
+
+  build:
+    # Extend with defaults anchor defined at top of file.
+    <<: *defaults
+
+    steps:
+      # Check out source code to the configured path.
+      - checkout
+      # Restore dependencies to working directory from previously saved key.
+      - restore_cache:
+          key: v1-dependencies-{{ .Branch }}-{{ checksum "package.json" }}
+      # Build distribution bundle into build directory within working directory.
+      - run:
+          name: Build code
+          command: npm run build
+      # Save build directory to cache.
+      - save_cache:
+          key: v1-package-builds-{{ .Revision }}
+          paths:
+            - build
+        
+  test:
+    # Extend with defaults anchor defined at top of file.
+    <<: *defaults
+
+    steps:
+      # Check out source code to the configured path.
+      - checkout
+      # Restore dependencies to working directory from previously saved key.
+      - restore_cache:
+          key: v1-dependencies-{{ .Branch }}-{{ checksum "package.json" }}
+      # Restore build directory to working directory from previously saved key.
+      - restore_cache:
+          key: v1-package-builds-{{ .Revision }}
+      # Run jest tests.
+      - run:
+          name: Run Tests
+          command: npm test
+      # Run lint (lint currently has errors, but it exits with code 0).
+      - run:
+          name: Lint
+          command: npm run lint
+
+  publish:
+    # Extend with defaults anchor defined at top of file.
+    <<: *defaults
+
+    steps:
+      # Check out source code to the configured path.
+      - checkout
+      # Restore dependencies to working directory from previously saved key.
+      - restore_cache:
+          key: v1-dependencies-{{ .Branch }}-{{ checksum "package.json" }}
+      # Restore build directory to working directory from previously saved key.
+      - restore_cache:
+          key: v1-package-builds-{{ .Revision }}
+      # Build npm auth string from environment variable.
+      # Store npm auth string in .npmrc file within working directory.
+      - run:
+          name: Add npm auth token
+          command: echo "//registry.npmjs.org/:_authToken=$NPM_TOKEN" >> ~/repo/.npmrc
+      # Log package.json to console, so we can verify the update is working as expected.
+      - run:
+          name: Log package.json pre version
+          command: "echo $CIRCLE_TAG && cat package.json"
+      # Force package.json to reference version specified in git tag.
+      - run:
+          name: Ensure version matches tag
+          command: "echo npm version $CIRCLE_TAG"
+      # Log package.json to console, so we can verify the update is working as expected.
+      - run:
+          name: Log package.json post version
+          command: "echo $CIRCLE_TAG && cat package.json"
+      # - run:
+      #     name: Publish package to npm
+      #     command: npm publish
+
+workflows:
+  version: 2
+
+  # Build and Test on commit to any branch and on creation of tag matching format #.#.# .
+  # Deploy only on creation of tag matching format #.#.# .
+  build-test-and-deploy:
+    jobs:
+      - bootstrap:
+          filters:
+            # If trigger was tag creation.
+            tags:
+              # Only run if tag format is #.#.# .
+              only: /^[0-9]+\.[0-9]+\.[0-9]+$/
+      - build:
+          requires:
+            - bootstrap
+          filters:
+            # If trigger was tag creation.
+            tags:
+              # Only run if tag format is #.#.# .
+              only: /^[0-9]+\.[0-9]+\.[0-9]+$/
+      - test:
+          requires:
+            - build
+          filters:
+            # If trigger was tag creation.
+            tags:
+              # Only run if tag format is #.#.# .
+              only: /^[0-9]+\.[0-9]+\.[0-9]+$/
+      - publish:
+          requires:
+            - build
+            - test
+          filters:
+            # If trigger was commit to a branch.
+            branches:
+              # Don't run for any branches.
+              ignore: /.*/
+            # If trigger was tag creation.
+            tags:
+              # Only run if tag format is #.#.# .
+              only: /^[0-9]+\.[0-9]+\.[0-9]+$/
+

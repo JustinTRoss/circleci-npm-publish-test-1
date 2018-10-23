@@ -9,10 +9,10 @@ version: 2
 
 # Define YAML anchor with common code
 defaults: &defaults
-    working_directory: ~/repo
-    docker:
-      # Specify docker image version.
-      - image: circleci/node:10.11.0
+  working_directory: ~/repo
+  docker:
+    # Specify docker image version.
+    - image: circleci/node:10.11.0
 
 jobs:
   bootstrap:
@@ -54,7 +54,7 @@ jobs:
           key: v1-package-builds-{{ .Revision }}
           paths:
             - build
-        
+
   test:
     # Extend with defaults anchor defined at top of file.
     <<: *defaults
@@ -99,10 +99,10 @@ jobs:
       - run:
           name: Log package.json pre version
           command: "echo $CIRCLE_TAG && cat package.json"
-      # Force package.json to reference version specified in git tag.
+      # Force package.json to reference version specified in git tag and perform publish dry run.
       - run:
-          name: Ensure version matches tag
-          command: "echo npm version $CIRCLE_TAG"
+          name: Ensure version matches git tag and perform publish dry run
+          command: "echo npm version $CIRCLE_TAG && npm publish --dry-run"
       # Log package.json to console, so we can verify the update is working as expected.
       - run:
           name: Log package.json post version
@@ -153,4 +153,3 @@ workflows:
             tags:
               # Only run if tag format is #.#.# .
               only: /^[0-9]+\.[0-9]+\.[0-9]+$/
-

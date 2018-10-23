@@ -102,7 +102,7 @@ jobs:
       # Force package.json to reference version specified in git tag and perform publish dry run.
       - run:
           name: Ensure version matches git tag and perform publish dry run
-          command: "echo npm version $CIRCLE_TAG && npm publish --dry-run"
+          command: "npm version $CIRCLE_TAG && npm publish --dry-run"
       # Log package.json to console, so we can verify the update is working as expected.
       - run:
           name: Log package.json post version

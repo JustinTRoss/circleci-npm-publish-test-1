@@ -99,17 +99,13 @@ jobs:
       - run:
           name: Log package.json pre version
           command: "echo $CIRCLE_TAG && cat package.json"
-      # Force package.json to reference version specified in git tag and perform publish dry run.
+      # Force package.json to reference version specified in git tag.
       - run:
-          name: Ensure version matches git tag and perform publish dry run
-          command: "npm --no-git-tag-version version $CIRCLE_TAG && npm publish --dry-run"
-      # Log package.json to console, so we can verify the update is working as expected.
+          name: Ensure version matches git tag
+          command: "npm --no-git-tag-version version $CIRCLE_TAG"
       - run:
-          name: Log package.json post version
-          command: "echo $CIRCLE_TAG && cat package.json"
-      # - run:
-      #     name: Publish package to npm
-      #     command: npm publish
+          name: Publish package to npm
+          command: npm publish
 
 workflows:
   version: 2

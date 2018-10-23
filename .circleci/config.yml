@@ -102,7 +102,7 @@ jobs:
       # Force package.json to reference version specified in git tag.
       - run:
           name: Ensure version matches git tag
-          command: "npm --no-git-tag-version version $CIRCLE_TAG"
+          command: "npm --no-git-tag-version version --allow-same-version $CIRCLE_TAG"
       - run:
           name: Publish package to npm
           command: npm publish
